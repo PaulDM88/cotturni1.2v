@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#051e37" />
+  <title>TesisPro Ecuador - Tarifario - Cotizador de plagio e IA en Turnitin</title>
+  <style>
+    :root{
+      --pri:#051e37;--pri2:#d0a554;--pri3:#0097b2;--acc:#d0a554;
+      --bg:#f7f9fc;--card:#ffffff;
+    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:#0f172a;margin:0;transition:background .3s ease,color .3s ease;-webkit-tap-highlight-color:transparent}
+    header{background:linear-gradient(90deg,var(--pri),var(--pri3));color:#fff;padding:18px 20px;padding-top:calc(18px + env(safe-area-inset-top));text-align:center;position:sticky;top:0;z-index:10;transition:all .3s ease}
+    header h1{margin:0;font-size:1.4rem;letter-spacing:0.5px;transition:transform 0.3s ease}
+    main{max-width:900px;margin:16px auto;padding:0 12px;transition:all .3s ease}
+    .card{background:var(--card);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 4px 10px rgba(0,0,0,.06);transition:transform .3s ease, box-shadow .3s ease}
+    .card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+    label{display:flex;flex-direction:column;margin-bottom:12px;font-size:0.95rem;gap:6px}
+    input,select{padding:12px 14px;border:1px solid #cbd5e1;border-radius:12px;transition:border .2s ease,box-shadow .2s ease;font-size:16px}
+    input:focus,select:focus{border-color:var(--pri2);box-shadow:0 0 5px rgba(208,165,84,0.4)}
+    button{background:var(--pri3);color:#fff;padding:12px 16px;border:none;border-radius:12px;cursor:pointer;margin-right:8px;transition:background .3s ease,transform .2s ease;font-size:16px;min-height:44px}
+    button:hover{background:var(--pri2);transform:scale(1.03)}
+    .pill{background:#eef2f7;padding:10px;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;transition:background 0.3s ease,transform 0.3s ease}
+    .pill:hover{background:#e2e8f0;transform:scale(1.01)}
+    .btns{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+
+    .registros-list{display:grid;gap:10px}
+    .registro{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff;display:grid;gap:6px}
+    .registro .head{display:flex;gap:8px;justify-content:space-between;align-items:center}
+    .registro .meta{font-size:.9rem;color:#475569}
+    .registro .acciones{display:flex;gap:8px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:.8rem;background:#e6f0ff;color:#0b2955}
+
+  @media (max-width: 520px){
+      header h1{font-size:1.02rem}
+      main{margin:8px auto}
+      .btns button{flex:1}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TesisPro Ecuador - Tarifario - Cotizador de plagio e IA en Turnitin</h1>
+  </header>
+  <main>
+    <section class="card">
+      <label>Cliente<input id="cliente" type="text" placeholder="Nombre" /></label>
+      <label>Tipo de trabajo académico<select id="tipo"><option>Grado</option><option>Postgrado</option><option>Doctorado</option></select></label>
+      <label>Categoría (Universidad)<select id="universidad"><option>Nacional</option><option>Internacional</option></select></label>
+      <label>Páginas<input id="paginas" type="number" inputmode="numeric" pattern="[0-9]*" min="1" step="1" value="100" /></label>
+      <label>% Inicial<input id="pInicial" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="27" /></label>
+      <label>% Meta<input id="pMeta" type="number" inputmode="decimal" step="0.1" min="0" max="100" value="10" /></label>
+      <label>Urgencia<select id="urgencia"><option>Normal</option><option>Urgente (&lt;72h)</option></select></label>
+      <div class="btns">
+        <button onclick="calcular()">Calcular</button>
+        <button onclick="guardarRegistro()" style="background:var(--pri2)">Guardar registro</button>
+        <button onclick="reiniciar()" style="background:#7a8699">Reiniciar</button>
+      </div>
+    </section>
+
+    <section class="card" id="resultCard">
+      <div class="pill"><span>% a reducir</span><b id="outReducir">0</b></div>
+      <div class="pill"><span>Banda</span><b id="outBanda">—</b></div>
+      <div class="pill"><span>$ Base reducción</span><b id="outBase">$0.00</b></div>
+      <div class="pill"><span>Factor por páginas</span><b id="outPageFactor">1.00×</b></div>
+      <div class="pill"><span>$ Reducción final</span><b id="outRedFinal">$0.00</b></div>
+      <div class="pill"><span>$ Informe</span><b id="outInforme">$0.00</b></div>
+      <div class="pill"><span>$ TOTAL (sin informe)</span><b id="outTotal">$0.00</b></div>
+      <div class="pill" style="background:#d0a5541a"><span><b>$ TOTAL (con informe)</b></span><b id="outTotalConInforme">$0.00</b></div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin-top:0">Registros guardados</h3>
+      <div class="btns" style="margin-top:0">
+        <button onclick="copiarTodos()" title="Copia los resúmenes de todos los registros">Copiar todos</button>
+        <button onclick="borrarTodo()" style="background:#c0392b">Borrar todo</button>
+      </div>
+      <div id="registros" class="registros-list" style="margin-top:10px"></div>
+    </section>
+  </main>
+  <script>
+    const $=id=>document.getElementById(id);
+    const fmt=n=>`$${Number(n||0).toFixed(2)}`;
+    const bandas={b0_10:30,b10_20:50,b20_30:80,b30_40:110,b40p:140};
+
+    function bandaPor(p){
+      if(p<=0)return{k:"0",base:0};
+      if(p<=10)return{k:"0-10",base:bandas.b0_10};
+      if(p<=20)return{k:"10-20",base:bandas.b10_20};
+      if(p<=30)return{k:"20-30",base:bandas.b20_30};
+      if(p<=40)return{k:"30-40",base:bandas.b30_40};
+      return{k:">40",base:bandas.b40p};
+    }
+
+    function factorPorPaginas(pags){
+      if(pags<=50) return 1.00;
+      if(pags<=100) return 1.05;
+      if(pags<=125) return 1.10;
+      if(pags<=150) return 1.15;
+      if(pags<=175) return 1.20;
+      if(pags<=200) return 1.25;
+      if(pags<=250) return 1.30;
+      if(pags<=300) return 1.35;
+      return 1.35;
+    }
+
+    function calcular(){
+      const pi=parseFloat($("pInicial").value)||0;
+      const pm=parseFloat($("pMeta").value)||0;
+      const pags=parseInt($("paginas").value)||0;
+      const urg=$("urgencia").value;
+      const tipo=$("tipo").value;
+      const categoria=$("universidad").value;
+      const aRed=pi-pm;
+      const band=bandaPor(aRed);
+
+      const minBand=parseInt(band.k.split('-')[0])||0;
+      const maxBand=parseInt(band.k.split('-')[1])||(band.k==='>40'?50:10);
+      const factor=(aRed-minBand)/((maxBand-minBand)||1);
+      let precioReduccion=band.base+factor*5;
+
+      const baseRef=50/(bandas.b10_20+((17-10)/10*5));
+      precioReduccion*=baseRef;
+
+      if(tipo==='Grado'&&categoria==='Nacional')precioReduccion*=0.9025;
+      if(tipo==='Grado'&&categoria==='Internacional')precioReduccion*=0.95;
+      if(tipo==='Postgrado'&&categoria==='Nacional')precioReduccion*=0.95;
+      if(tipo==='Doctorado')precioReduccion*=1.15;
+
+      const pageFactor=factorPorPaginas(pags);
+      precioReduccion*=pageFactor;
+
+      if(tipo==='Grado'||tipo==='Postgrado')precioReduccion+=10;
+      if(urg.includes('Urgente'))precioReduccion+=10;
+
+      const precioInforme=pags<=100?4:8;
+      const total=precioReduccion;
+      const totalConInforme=precioReduccion+precioInforme;
+
+      const card=$("resultCard");
+      card.style.transform='scale(1.05)';
+      setTimeout(()=>card.style.transform='scale(1)',150);
+
+      $("outReducir").textContent=aRed.toFixed(1)+" pts";
+      $("outBanda").textContent=band.k;
+      $("outBase").textContent=fmt(band.base);
+      $("outPageFactor").textContent=pageFactor.toFixed(2)+"×";
+      $("outRedFinal").textContent=fmt(precioReduccion);
+      $("outInforme").textContent=fmt(precioInforme);
+      $("outTotal").textContent=fmt(total);
+      $("outTotalConInforme").textContent=fmt(totalConInforme);
+
+      return{pi,pm,pags,urg,tipo,categoria,aRed,band:band.k,pageFactor:Number(pageFactor.toFixed(2)),precioReduccion:Number(precioReduccion.toFixed(2)),precioInforme,total:Number(total.toFixed(2)),totalConInforme:Number(totalConInforme.toFixed(2))};
+    }
+
+    const STORAGE_KEY='tesispro_registros_v4';
+
+    function cargarRegistros(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');}catch(e){return[];}}
+    function guardarRegistros(arr){localStorage.setItem(STORAGE_KEY,JSON.stringify(arr));}
+
+    function resumenCorto(data){
+      let rechecks=1;
+      if(data.aRed>10&&data.aRed<=20)rechecks=2;else if(data.aRed>20)rechecks=3;
+      const urgente=data.urg.includes('Urgente')?'Sí (+$10)':'No';
+      return`Reducir similitud de ${data.pi}% a ${data.pm}% (−${data.aRed.toFixed(1)} pts, banda ${data.band}). Documento: ${data.tipo}, Univ. ${data.categoria}, ${data.pags} págs (×${data.pageFactor}). Urgente: ${urgente}. Valor reducción: ${fmt(data.precioReduccion)}. Total con informe: ${fmt(data.totalConInforme)}.`;
+    }
+
+    function guardarRegistro(){
+      const data=calcular();
+      const cliente=$("cliente").value||'Cliente';
+      const ts=new Date();
+      const item={id:'r'+ts.getTime(),fecha:ts.toLocaleString(),cliente,data,resumen:resumenCorto(data)};
+      const registros=cargarRegistros();
+      registros.unshift(item);
+      guardarRegistros(registros);
+      renderRegistros();
+    }
+
+    function copiar(txt){navigator.clipboard?.writeText(txt);}
+    function borrar(id){const registros=cargarRegistros().filter(r=>r.id!==id);guardarRegistros(registros);renderRegistros();}
+    function borrarTodo(){guardarRegistros([]);renderRegistros();}
+    function copiarTodos(){const registros=cargarRegistros();const blob=registros.map(r=>`• ${r.fecha} · ${r.cliente}\n  ${r.resumen}`).join('\n\n');copiar(blob);}
+
+    function renderRegistros(){
+      const wrap=$("registros");
+      const registros=cargarRegistros();
+      wrap.innerHTML='';
+      if(!registros.length){wrap.innerHTML='<div class="meta">Aún no hay registros guardados.</div>';return;}
+      registros.forEach(r=>{
+        const div=document.createElement('div');
+        div.className='registro';
+        div.innerHTML=`
+          <div class="head"><div><b>${r.cliente}</b> <span class="badge">${r.data.tipo} · ${r.data.categoria}</span></div><div class="meta">${r.fecha}</div></div>
+          <div class="meta">${r.data.pi}% → ${r.data.pm}% (−${r.data.aRed.toFixed(1)} pts, banda ${r.data.band}) · ${r.data.pags} págs (×${r.data.pageFactor}) · Urgente: ${r.data.urg.includes('Urgente')?'Sí (+$10)':'No'} · Total c/ informe: ${fmt(r.data.totalConInforme)}</div>
+          <div>${r.resumen}</div>
+          <div class="acciones"><button onclick='navigator.clipboard.writeText(this.parentNode.parentNode.querySelector("div:nth-child(3)").textContent)'>Copiar resumen</button><button style="background:#c0392b" onclick="borrar('${r.id}')">Eliminar</button></div>`;
+        wrap.appendChild(div);
+      });
+    }
+
+    function reiniciar(){
+      ["cliente","paginas","pInicial","pMeta"].forEach(id=>$(id).value="");
+      $("tipo").selectedIndex=0;$("universidad").selectedIndex=0;$("urgencia").selectedIndex=0;
+      ["outReducir","outBanda","outBase","outRedFinal","outInforme","outTotal","outTotalConInforme"].forEach(id=>$(id).textContent=id.includes("outBanda")?"—":"$0.00");
+      $("outPageFactor").textContent='1.00×';
+    }
+
+    renderRegistros();
+  </script>
+  <footer style="text-align:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));color:#fff;background:linear-gradient(90deg,var(--pri),var(--pri3));font-size:0.95rem;">
+    Tu éxito académico, nuestra misión
+  </footer>
+</body>
+</html>
